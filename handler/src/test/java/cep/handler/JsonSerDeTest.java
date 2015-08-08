@@ -6,6 +6,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import cep.handler.MyHandler;
+import cep.model.DDBStreamRecords;
 
 public class JsonSerDeTest {
 
@@ -29,10 +30,22 @@ public class JsonSerDeTest {
 				+ "\"ARN:AWS:DYNAMODB:US-EAST-1:694796463941:TABLE/EVENTSTORE/STREAM/2015-08-02T01:17:37.826\" }"
 				+ "] }";
 		
-		MyHandler.DDBStreamRecords streamRecords = MyHandler.deserialize(input);
+		String data = 
+			"{ \"Records\": [ { \"eventID\": \"cd221197f586c5b819fd6b71d83aec8d\","
+			+ " \"eventName\": \"INSERT\", \"eventVersion\": \"1.0\", \"eventSource\":"
+			+ " \"aws:dynamodb\", \"awsRegion\": \"us-east-1\", \"dynamodb\": { \"Keys\":"
+			+ " { \"EventID\": { \"S\": \"1439044332864\" } }, \"NewImage\": { \"EventType\":"
+			+ " { \"S\": \"SW INSTALL\" }, \"EventID\": { \"S\": \"1439044332864\" },"
+			+ " \"SoftwareCPE\": { \"S\": \"cpe:/1439044332864\" }, \"Timestamp\": { \"S\":"
+			+ " \"2015-08-08T10:32:12.865Z\" }, \"SoftwareName\": { \"S\":"
+			+ " \"software name 1439044332864\" } }, \"SequenceNumber\": \"400000000000017132579\","
+			+ " \"SizeBytes\": 160, \"StreamViewType\": \"NEW_IMAGE\" }, \"eventSourceARN\":"
+			+ " \"arn:aws:dynamodb:us-east-1:694796463941:table/EventStore/stream/2015-08-08T14:06:12.675\" } ] }";
 		
-		Assert.assertEquals(streamRecords.records.size(), 2);
-		Assert.assertEquals(streamRecords.records.get(0).dbRecord.event.software.value, "CPE:/1438481821788");		
+		DDBStreamRecords streamRecords = MyHandler.deserialize(data);
+		
+		//Assert.assertEquals(streamRecords.records.size(), 2);
+		Assert.assertEquals(streamRecords.records.get(0).dbRecord.event.softwareCPE.value, "cpe:/1439044332864");		
 		
 		System.out.println("Deserialization successful");
 		

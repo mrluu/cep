@@ -1,16 +1,14 @@
 package cep.setup;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-import cep.handler.MyHandler;
+import cep.model.Event;
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -28,22 +26,16 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
-//import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 
-public class CEPDriver {
-	static DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient(
-            new ProfileCredentialsProvider()));
-	
+public class CEPDriver {	
 	static AmazonDynamoDBClient dynamoDBClient = 
 	        new AmazonDynamoDBClient(new ProfileCredentialsProvider());
 	
+	static DynamoDB dynamoDB = new DynamoDB(dynamoDBClient);
+	
 	static AmazonDynamoDBStreamsClient streamsClient = 
 	        new AmazonDynamoDBStreamsClient(new ProfileCredentialsProvider());
-
-	static SimpleDateFormat dateFormatter = new SimpleDateFormat(
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 	
 	/**
 	 * @param args
@@ -53,13 +45,13 @@ public class CEPDriver {
 			System.out.println("Please supply one argument");
 		}
 		else if (args[0].equalsIgnoreCase("init")) {
-			createTable(Tables.EVENT_STORE, 10L, 10L, "EventId", "S", null, null);
+			createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
 		}
 		else if (args[0].equalsIgnoreCase("generate")) {
-			generateEvent();
+			SensorSimulator.generateEvent(dynamoDBClient);
 		}
 		else if (args[0].equalsIgnoreCase("cleanup")) {
-			deleteTable(Tables.EVENT_STORE);
+			deleteTable(Event.TABLE_NAME);
 		}
 		else if (args[0].equalsIgnoreCase("stream")) {
 			testStream();
@@ -110,6 +102,7 @@ public class CEPDriver {
             request.setAttributeDefinitions(attributeDefinitions);
 
             System.out.println("Issuing CreateTable request for " + tableName);
+            
             Table table = dynamoDB.createTable(request);
             System.out.println("Waiting for " + tableName
                 + " to be created...this may take a while...");
@@ -136,30 +129,9 @@ public class CEPDriver {
         }
     }    
     
-	private static void generateEvent() {
-		Table table = dynamoDB.getTable(Tables.EVENT_STORE);
-		
-		try {
-			Item item = new Item()
-            .withPrimaryKey("EventId", new Long(System.currentTimeMillis()).toString())
-            .withString("EventType", "Software Installation")
-            //device id            
-            .withString("cpe", "cpe:/" + new Long(System.currentTimeMillis()).toString())
-            //binary hash
-            .withString("InstallationDate", dateFormatter.format(System.currentTimeMillis()));
-        
-			table.putItem(item);
-		}
-		catch (Exception ex) {
-			System.err.println("Generate event failed.");
-			System.err.println(ex.getMessage());
-		}
-		
-		System.out.println("Generate Event Succeeded");
-	}
 	
 	private static void testStream() {
-		DescribeTableResult describeTableResult = dynamoDBClient.describeTable(Tables.EVENT_STORE);		
+		DescribeTableResult describeTableResult = dynamoDBClient.describeTable(Event.TABLE_NAME);		
         String myStreamArn = describeTableResult.getTable().getLatestStreamArn();                
 		DescribeStreamResult describeStreamResult = streamsClient.describeStream(new DescribeStreamRequest()
 		            .withStreamArn(myStreamArn));

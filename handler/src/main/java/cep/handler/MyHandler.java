@@ -4,16 +4,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.google.gson.*;
-import com.google.gson.annotations.SerializedName;
+import cep.model.DDBStreamRecords;
+
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.google.gson.Gson;
 
 public class MyHandler {
 		
@@ -23,7 +21,8 @@ public class MyHandler {
 		int letter;        
         while((letter = inputStream.read()) != -1)
         {
-            baos.write(Character.toUpperCase(letter));            
+        	baos.write(letter);
+            //baos.write(Character.toUpperCase(letter));            
         }
         
         logger.log(new String(baos.toByteArray()));
@@ -48,51 +47,5 @@ public class MyHandler {
 		Gson g = new Gson();
 		DDBStreamRecords recs = g.fromJson(input, DDBStreamRecords.class);
         return recs;
-	}
-	
-	public static class DDBStreamRecords {
-		@SerializedName("RECORDS")
-		public List<Record> records;
-	}
-	
-	public static class Record {
-		@SerializedName("DYNAMODB")
-		public DBRecord dbRecord;		
-	}
-	
-	public static class DBRecord {	
-		@SerializedName("NEWIMAGE")
-		public Event event;		
-	}	
-		
-	public static class Event {
-		@SerializedName("EVENTTYPE")
-		public EventType eventType;
-		@SerializedName("EVENTID")
-		public EventID eventID;
-		@SerializedName("CPE")
-		public Software software;
-		@SerializedName("INSTALLATIONDATE")
-		public InstallDate installDate;
-	}
-	
-	public static class EventID {
-		@SerializedName("S")
-		public String value;
-	}
-	
-	public static class EventType {
-		@SerializedName("S")
-		public String value;
-	}
-	
-	public static class Software {
-		@SerializedName("S")
-		public String value;
-	}
-	
-	public static class InstallDate {
-		@SerializedName("S")
-		public String date;
 	}
 }
