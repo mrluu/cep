@@ -42,28 +42,33 @@ public class CEPDriver {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if ((args.length==0) || (args.length>1)) {
-			System.out.println("Please supply one argument");
+		try {
+			if ((args.length==0) || (args.length>1)) {
+				System.out.println("Please supply one argument");
+			}
+			else if (args[0].equalsIgnoreCase("init")) {
+				createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
+				createTable(Malware.TABLE_NAME, 10L, 10L, Malware.KEY_ATTR, "S", null, null);
+			}
+			else if (args[0].equalsIgnoreCase("generate")) {
+				SensorSimulator.generateEvent(dynamoDBClient);
+			}
+			else if (args[0].equalsIgnoreCase("malware")) {
+				SensorSimulator.populateMalwareCatalog(dynamoDBClient);
+			}
+			else if (args[0].equalsIgnoreCase("cleanup")) {
+				deleteTable(Event.TABLE_NAME);
+				deleteTable(Malware.TABLE_NAME);
+			}
+			else if (args[0].equalsIgnoreCase("stream")) {
+				testStream();
+			}
+			else {
+				System.out.println("Please supply a valid argument");
+			}
 		}
-		else if (args[0].equalsIgnoreCase("init")) {
-			createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
-			createTable(Malware.TABLE_NAME, 10L, 10L, Malware.KEY_ATTR, "S", null, null);
-		}
-		else if (args[0].equalsIgnoreCase("generate")) {
-			SensorSimulator.generateEvent(dynamoDBClient);
-		}
-		else if (args[0].equalsIgnoreCase("malware")) {
-			SensorSimulator.populateMalwareCatalog(dynamoDBClient);
-		}
-		else if (args[0].equalsIgnoreCase("cleanup")) {
-			deleteTable(Event.TABLE_NAME);
-			deleteTable(Malware.TABLE_NAME);
-		}
-		else if (args[0].equalsIgnoreCase("stream")) {
-			testStream();
-		}
-		else {
-			System.out.println("Please supply a valid argument");
+		catch (Exception ex) {
+			System.err.print(ex);
 		}
 	}
 

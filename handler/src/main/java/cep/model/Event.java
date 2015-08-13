@@ -13,6 +13,7 @@ public class Event {
 	public static final String SW_NAME_ATTR = "SoftwareName";
 	public static final String SW_CPE_ATTR = "SoftwareCPE";	
 	public static final String SW_MD5_HASH_ATTR = "SoftwareMD5Hash";
+	public static final String DEVICE_ID_ATTR = "DeviceID";
 	public static final String TIMESTAMP_ATTR = "Timestamp";
 	
 	public static final String SW_INSTALL = "SW INSTALL";
@@ -101,4 +102,18 @@ public class Event {
 	public void setTimestamp(String ts) {		
 		this.timestamp.value = ts;
 	}
+	
+	@SerializedName(DEVICE_ID_ATTR)
+	public DeviceID deviceID = new DeviceID();
+	public static class DeviceID {
+		@SerializedName("S")
+		public String value;
+	}
+	@DynamoDBAttribute(attributeName=DEVICE_ID_ATTR)
+	public String getDeviceID() {		
+		return this.deviceID.value;		
+	}
+	public void setDeviceID(String id) {		
+		this.deviceID.value = id;
+	}			
 }

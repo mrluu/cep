@@ -50,5 +50,4 @@ public class JsonSerDeTest {
 		System.out.println("Deserialization successful");
 		
 	}
-
 }
