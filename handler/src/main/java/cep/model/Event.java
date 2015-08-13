@@ -12,7 +12,7 @@ public class Event {
 	public static final String EVENT_TYPE_ATTR = "EventType";
 	public static final String SW_NAME_ATTR = "SoftwareName";
 	public static final String SW_CPE_ATTR = "SoftwareCPE";	
-	public static final String SW_MD5_HASH = "SoftwareMD5Hash";
+	public static final String SW_MD5_HASH_ATTR = "SoftwareMD5Hash";
 	public static final String TIMESTAMP_ATTR = "Timestamp";
 	
 	public static final String SW_INSTALL = "SW INSTALL";
@@ -74,13 +74,13 @@ public class Event {
 		this.softwareCPE.value = cpe;
 	}
 	
-	@SerializedName(SW_MD5_HASH)
+	@SerializedName(SW_MD5_HASH_ATTR)
 	public SoftwareMD5Hash softwareMD5Hash = new SoftwareMD5Hash();
 	public static class SoftwareMD5Hash {
 		@SerializedName("S")
 		public String value;
 	}
-	@DynamoDBAttribute(attributeName=SW_CPE_ATTR)
+	@DynamoDBAttribute(attributeName=SW_MD5_HASH_ATTR)
 	public String getSoftwareMD5Hash() {		
 		return this.softwareMD5Hash.value;		
 	}

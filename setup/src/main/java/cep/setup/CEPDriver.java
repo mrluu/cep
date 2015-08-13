@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cep.model.Event;
+import cep.model.Malware;
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
@@ -46,12 +47,17 @@ public class CEPDriver {
 		}
 		else if (args[0].equalsIgnoreCase("init")) {
 			createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
+			createTable(Malware.TABLE_NAME, 10L, 10L, Malware.KEY_ATTR, "S", null, null);
 		}
 		else if (args[0].equalsIgnoreCase("generate")) {
 			SensorSimulator.generateEvent(dynamoDBClient);
 		}
+		else if (args[0].equalsIgnoreCase("malware")) {
+			SensorSimulator.populateMalwareCatalog(dynamoDBClient);
+		}
 		else if (args[0].equalsIgnoreCase("cleanup")) {
 			deleteTable(Event.TABLE_NAME);
+			deleteTable(Malware.TABLE_NAME);
 		}
 		else if (args[0].equalsIgnoreCase("stream")) {
 			testStream();
