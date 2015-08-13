@@ -34,15 +34,12 @@ public class SensorSimulator {
 		return buffer.toString();
 	}
 			
-	public static void generateEvent(AmazonDynamoDBClient client) throws IOException {
+	public static void generateEvent(AmazonDynamoDBClient client) throws IOException, InterruptedException {
 		DynamoDBMapper mapper = new DynamoDBMapper(client);				
 		String now = dateFormatter.format(new Date(System.currentTimeMillis()));
 		
-		BufferedReader br = 
-                new BufferedReader(new InputStreamReader(System.in));		
-		String input;
-		
-		while((input=br.readLine())==null || !(input.equalsIgnoreCase("stop"))) {
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));		
+		do {
 			Event event = new Event();
 			event.setEventID(generateRandomString(20));
 			event.setEventType(Event.SW_INSTALL);
@@ -51,8 +48,9 @@ public class SensorSimulator {
 			String product = generateRandomString(12);
 			event.setSoftwareCPE("cpe:/a:" + vendor + ":" + product);
 			event.setSoftwareName(vendor.toUpperCase() + " " + product.toUpperCase());
+			event.setDeviceID(generateRandomString(5).toLowerCase() + ".tieuluu.com");
 			
-			int random = (int) Math.floor(Math.random()*50);		
+			int random = (int) Math.floor(Math.random()*20);		
 			if (random < badHashes.length) {
 				event.setSoftwareMD5Hash(badHashes[random]);
 				mapper.save(event);	
@@ -60,8 +58,11 @@ public class SensorSimulator {
 			else {
 				event.setSoftwareMD5Hash("");
 				mapper.save(event);	
-			}			
-		}		
+			}	
+			
+			long sleepTime = (long)(Math.random()*7000);			
+			Thread.sleep(sleepTime);
+		} while ((!br.ready() || !((br.readLine()).equalsIgnoreCase("stop"))));		
 	}
 		
 	public static void populateMalwareCatalog(AmazonDynamoDBClient client) {
