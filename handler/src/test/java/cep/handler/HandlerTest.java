@@ -8,7 +8,7 @@ import org.junit.Test;
 import cep.handler.MyHandler;
 import cep.model.DDBStreamRecords;
 
-public class JsonSerDeTest {
+public class HandlerTest {
 
 	@Test
 	public void test() {

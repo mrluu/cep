@@ -56,7 +56,7 @@ public class SensorSimulator {
 				mapper.save(event);	
 			}
 			else {
-				event.setSoftwareMD5Hash("");
+				event.setSoftwareMD5Hash("notmalwarehash");
 				mapper.save(event);	
 			}	
 			

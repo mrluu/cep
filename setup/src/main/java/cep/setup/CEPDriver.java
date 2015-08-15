@@ -117,8 +117,12 @@ public class CEPDriver {
                     .withStreamSpecification(streamSpecification);
             }
             else if (tableName.equals(Malware.TABLE_NAME)) {
+            	attributeDefinitions.add(new AttributeDefinition()
+            		.withAttributeName(Malware.MD5_HASH_ATTR)
+            		.withAttributeType("S"));
+            	
             	GlobalSecondaryIndex md5HashIndex = new GlobalSecondaryIndex()
-            		.withIndexName("MD5HashIndex")
+            		.withIndexName(Malware.INDEX_NAME)
             		.withProvisionedThroughput(new ProvisionedThroughput()
                     .withReadCapacityUnits(readCapacityUnits)
                     .withWriteCapacityUnits(writeCapacityUnits))
