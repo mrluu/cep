@@ -8,12 +8,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import cep.model.DDBStreamRecords;
+import cep.model.Malware;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.google.gson.Gson;
 
-public class MyHandler {
+public class MyHandler {	
+	DynamoDBMapper mapper = new DynamoDBMapper(new AmazonDynamoDBClient());
 		
 	public void handler(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
         LambdaLogger logger = context.getLogger();
@@ -25,13 +30,17 @@ public class MyHandler {
             //baos.write(Character.toUpperCase(letter));            
         }
         
-        logger.log(new String(baos.toByteArray()));
+        //logger.log(new String(baos.toByteArray()));
         
-        /*Gson g = new Gson();
-        Records recs = g.fromJson(new String(baos.toByteArray()), Records.class);
-        logger.log(recs.RECORDS.get(0).EVENTSOURCEARN);*/
+        Malware malware = retrieveMalware("");
+        logger.log("Malware: " + malware.getMalwareName());
          
     }
+	
+	private Malware retrieveMalware(String id) {
+		Malware malware = mapper.load(Malware.class, "MW-001");
+		return malware;
+	}
 	
 	public void iterateThruResults(Map<?,?> result, LambdaLogger logger) {
 		for (Entry<?, ?> entry : result.entrySet()) {

@@ -20,8 +20,10 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.Shard;
@@ -98,25 +100,45 @@ public class CEPDriver {
                     .withAttributeType(rangeKeyType));
             }
             
-            StreamSpecification streamSpecification = new StreamSpecification();
-            streamSpecification.setStreamEnabled(true);
-            streamSpecification.setStreamViewType(StreamViewType.NEW_IMAGE);
-
-            CreateTableRequest request = new CreateTableRequest()
+            CreateTableRequest request = null;
+            Table table;
+            
+            if (tableName.equals(Event.TABLE_NAME)) {
+	            StreamSpecification streamSpecification = new StreamSpecification();
+	            streamSpecification.setStreamEnabled(true);
+	            streamSpecification.setStreamViewType(StreamViewType.NEW_IMAGE);
+	
+	            request = new CreateTableRequest()
                     .withTableName(tableName)
                     .withKeySchema(keySchema)
                     .withProvisionedThroughput( new ProvisionedThroughput()
                     .withReadCapacityUnits(readCapacityUnits)
                     .withWriteCapacityUnits(writeCapacityUnits))
                     .withStreamSpecification(streamSpecification);
-
-            request.setAttributeDefinitions(attributeDefinitions);
-
-            System.out.println("Issuing CreateTable request for " + tableName);
+            }
+            else if (tableName.equals(Malware.TABLE_NAME)) {
+            	GlobalSecondaryIndex md5HashIndex = new GlobalSecondaryIndex()
+            		.withIndexName("MD5HashIndex")
+            		.withProvisionedThroughput(new ProvisionedThroughput()
+                    .withReadCapacityUnits(readCapacityUnits)
+                    .withWriteCapacityUnits(writeCapacityUnits))
+            		.withKeySchema( new KeySchemaElement()
+            		.withAttributeName(Malware.MD5_HASH_ATTR)
+            		.withKeyType(KeyType.HASH))
+            		.withProjection(new Projection()
+            		.withProjectionType("ALL"));
+            	
+            	request = new CreateTableRequest()
+                	.withTableName(tableName)
+                	.withKeySchema(keySchema)
+                	.withProvisionedThroughput( new ProvisionedThroughput()
+                	.withReadCapacityUnits(readCapacityUnits)
+                	.withWriteCapacityUnits(writeCapacityUnits))
+                	.withGlobalSecondaryIndexes(md5HashIndex);
+            }
             
-            Table table = dynamoDB.createTable(request);
-            System.out.println("Waiting for " + tableName
-                + " to be created...this may take a while...");
+            request.setAttributeDefinitions(attributeDefinitions); 
+            table = dynamoDB.createTable(request);           
             table.waitForActive();
 
         } catch (Exception e) {
