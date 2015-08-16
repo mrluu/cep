@@ -13,8 +13,8 @@ import cep.model.Event.SoftwareMD5Hash;
 import cep.model.Malware;
 import cep.model.Record;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Index;
 import com.amazonaws.services.dynamodbv2.document.Item;
@@ -25,10 +25,15 @@ import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import com.amazonaws.services.lambda.runtime.Context; 
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.PublishRequest;
+import com.amazonaws.services.sns.model.PublishResult;
 import com.google.gson.Gson;
 
 public class MyHandler {	
 	DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
+	
+	AmazonSNSClient snsClient = new AmazonSNSClient();	
 			
 	public void handler(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {   
 		LambdaLogger logger = context.getLogger();
@@ -42,21 +47,23 @@ public class MyHandler {
         List<Record> records = deserialize(new String(baos.toByteArray())).records;
         for (Record record : records) {
         	Event event = record.dbRecord.event;
-        	if (event != null) {
-	        	SoftwareMD5Hash md5Hash = event.softwareMD5Hash;
-	        	if (md5Hash != null)
-	        		testForMalware(md5Hash.value, logger);
-        	}
+        	SoftwareMD5Hash md5Hash = event.softwareMD5Hash;	        	
+	        testForMalware(md5Hash.value, event.deviceID.value, logger);        	
         }      
     }
 	
-	private void testForMalware(String md5Hash, LambdaLogger logger) {
+	private void testForMalware(String md5Hash, String deviceID, LambdaLogger logger) {
 		Table table = dynamoDB.getTable(Malware.TABLE_NAME);
+		
+		//Get the topic ARN that we put into the table when the SNS topic was set up
+		Item topicItem = table.getItem(Malware.KEY_ATTR, Malware.MALWARE_NOTIFY_TOPIC);
+		String topicARN = (String) topicItem.get(Malware.NAME_ATTR);
+				
 		Index index = table.getIndex(Malware.INDEX_NAME);
 
         ItemCollection<QueryOutcome> items = null;
         
-        logger.log("Malware Hash: " + md5Hash);
+        //logger.log("Malware Hash: " + md5Hash);
         
         QuerySpec querySpec = new QuerySpec();        
         querySpec.withKeyConditionExpression(Malware.MD5_HASH_ATTR + " = :v_md5Hash")
@@ -68,7 +75,12 @@ public class MyHandler {
         Iterator<Item> iterator = items.iterator();
         while (iterator.hasNext()) {
         	Item item = iterator.next();
-        	logger.log("Infected with malware: " + item.get(Malware.NAME_ATTR));        	
+        	String msg = "=========>>>>>>> " + deviceID + " infected with malware: " + item.get(Malware.NAME_ATTR);
+        	
+        	logger.log(msg);        	
+        	        	
+        	PublishRequest publishRequest = new PublishRequest(topicARN, msg);
+        	snsClient.publish(publishRequest);
         }	
 	}	
 	

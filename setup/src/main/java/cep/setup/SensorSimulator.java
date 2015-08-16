@@ -16,14 +16,24 @@ public class SensorSimulator {
 	static SimpleDateFormat dateFormatter = new SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 	
+	static enum Mode {ALPHA_NUM, HEXA};
+	
 	static String[] badHashes = 
 		{"001dd76872d80801692ff942308c64e6", 
 		"011dd96872e80804692ff942308c64e6", 
 		"012ee96872e80804692fd842308c64e6"};
 	
-	public static String generateRandomString(int length) {
+	public static String generateRandomString(int length, Mode mode) {
 		StringBuffer buffer = new StringBuffer();
-		String characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";	
+		String characters = "";
+		
+		switch(mode) {
+			case ALPHA_NUM:
+				characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+				break;
+			case HEXA:
+				characters = "abcdef0123456789";
+		}					
 		
 		int charactersLength = characters.length();
 
@@ -41,14 +51,14 @@ public class SensorSimulator {
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));		
 		do {
 			Event event = new Event();
-			event.setEventID(generateRandomString(20));
+			event.setEventID(generateRandomString(20, Mode.ALPHA_NUM));
 			event.setEventType(Event.SW_INSTALL);
 			event.setTimestamp(now);		
-			String vendor = generateRandomString(10);
-			String product = generateRandomString(12);
+			String vendor = generateRandomString(10, Mode.ALPHA_NUM);
+			String product = generateRandomString(12, Mode.ALPHA_NUM);
 			event.setSoftwareCPE("cpe:/a:" + vendor + ":" + product);
 			event.setSoftwareName(vendor.toUpperCase() + " " + product.toUpperCase());
-			event.setDeviceID(generateRandomString(5).toLowerCase() + ".tieuluu.com");
+			event.setDeviceID(generateRandomString(5, Mode.ALPHA_NUM).toLowerCase() + ".tieuluu.com");
 			
 			int random = (int) Math.floor(Math.random()*20);		
 			if (random < badHashes.length) {
@@ -56,7 +66,7 @@ public class SensorSimulator {
 				mapper.save(event);	
 			}
 			else {
-				event.setSoftwareMD5Hash("notmalwarehash");
+				event.setSoftwareMD5Hash(generateRandomString(32, Mode.HEXA));
 				mapper.save(event);	
 			}	
 			

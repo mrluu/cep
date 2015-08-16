@@ -9,6 +9,7 @@ import cep.model.Malware;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -30,6 +31,10 @@ import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
+import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.CreateTopicRequest;
+import com.amazonaws.services.sns.model.CreateTopicResult;
+import com.amazonaws.services.sns.model.DeleteTopicRequest;
 
 public class CEPDriver {	
 	static AmazonDynamoDBClient dynamoDBClient = 
@@ -39,6 +44,8 @@ public class CEPDriver {
 	
 	static AmazonDynamoDBStreamsClient streamsClient = 
 	        new AmazonDynamoDBStreamsClient(new ProfileCredentialsProvider());
+	
+	static AmazonSNSClient snsClient = new AmazonSNSClient(new ProfileCredentialsProvider());	
 	
 	/**
 	 * @param args
@@ -51,19 +58,16 @@ public class CEPDriver {
 			else if (args[0].equalsIgnoreCase("init")) {
 				createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
 				createTable(Malware.TABLE_NAME, 10L, 10L, Malware.KEY_ATTR, "S", null, null);
+				SensorSimulator.populateMalwareCatalog(dynamoDBClient);
+				createSNSTopic();
 			}
 			else if (args[0].equalsIgnoreCase("generate")) {
 				SensorSimulator.generateEvent(dynamoDBClient);
 			}
-			else if (args[0].equalsIgnoreCase("malware")) {
-				SensorSimulator.populateMalwareCatalog(dynamoDBClient);
-			}
 			else if (args[0].equalsIgnoreCase("cleanup")) {
+				deleteSNSTopic();
 				deleteTable(Event.TABLE_NAME);
 				deleteTable(Malware.TABLE_NAME);
-			}
-			else if (args[0].equalsIgnoreCase("stream")) {
-				testStream();
 			}
 			else {
 				System.out.println("Please supply a valid argument");
@@ -151,53 +155,39 @@ public class CEPDriver {
         }
     }	
     
+    private static void createSNSTopic() {
+    	CreateTopicRequest createTopicRequest = new CreateTopicRequest(Malware.MALWARE_NOTIFY_TOPIC);
+    	CreateTopicResult createTopicResult = snsClient.createTopic(createTopicRequest);
+    	
+    	//Save the topic ARN to the database so that our handler can get it later
+    	String topicARN = createTopicResult.getTopicArn();
+    	DynamoDBMapper mapper = new DynamoDBMapper(dynamoDBClient);	
+    	Malware malwareTopic = new Malware();
+    	malwareTopic.setMalwareID(Malware.MALWARE_NOTIFY_TOPIC);
+    	malwareTopic.setMalwareName(topicARN);
+    	malwareTopic.setDescription(topicARN);
+    	malwareTopic.setMD5Hash("");
+    	mapper.save(malwareTopic);
+    			
+    }
+    
+    private static void deleteSNSTopic() {
+    	DynamoDBMapper mapper = new DynamoDBMapper(dynamoDBClient);	
+    	Malware malwareTopic = mapper.load(Malware.class, Malware.MALWARE_NOTIFY_TOPIC);
+    	String topicARN = malwareTopic.getMalwareName();
+    	DeleteTopicRequest deleteTopicRequest = new DeleteTopicRequest(topicARN);
+    	snsClient.deleteTopic(deleteTopicRequest);
+    }
+    
     private static void deleteTable(String tableName) {
         Table table = dynamoDB.getTable(tableName);
-        try {
-            System.out.println("Issuing DeleteTable request for " + tableName);
-            table.delete();
-            System.out.println("Waiting for " + tableName
-                + " to be deleted...this may take a while...");
+        try {            
+            table.delete();            
             table.waitForDelete();
 
         } catch (Exception e) {
             System.err.println("DeleteTable request failed for " + tableName);
             System.err.println(e.getMessage());
         }
-    }    
-    
-	
-	private static void testStream() {
-		DescribeTableResult describeTableResult = dynamoDBClient.describeTable(Event.TABLE_NAME);		
-        String myStreamArn = describeTableResult.getTable().getLatestStreamArn();                
-		DescribeStreamResult describeStreamResult = streamsClient.describeStream(new DescribeStreamRequest()
-		            .withStreamArn(myStreamArn));
-	    //String streamArn = describeStreamResult.getStreamDescription().getStreamArn();
-	    List<Shard> shards = describeStreamResult.getStreamDescription().getShards();
-				    		
-		for (Shard shard : shards) {
-		    String shardId = shard.getShardId();
-		    System.out.println("Processing " + shardId + " from stream "+ myStreamArn);
-					
-			GetShardIteratorRequest getShardIteratorRequest = new GetShardIteratorRequest()
-			    .withStreamArn(myStreamArn)
-			    .withShardId(shardId)
-			    .withShardIteratorType(ShardIteratorType.TRIM_HORIZON);
-			GetShardIteratorResult getShardIteratorResult = 
-			    streamsClient.getShardIterator(getShardIteratorRequest);
-			String nextItr = getShardIteratorResult.getShardIterator();
-		
-			while (nextItr != null) {
-			    GetRecordsResult getRecordsResult = 
-			        streamsClient.getRecords(new GetRecordsRequest().
-			            withShardIterator(nextItr));
-			    List<Record> records = getRecordsResult.getRecords();
-			    System.out.println("Getting records...");
-			    for (Record record : records) {
-			        System.out.println(record);		        
-			    }
-			    nextItr = getRecordsResult.getNextShardIterator();
-			}
-		}
-	}	
+    }   
 }
