@@ -13,7 +13,6 @@ import cep.model.Event.SoftwareMD5Hash;
 import cep.model.Malware;
 import cep.model.Record;
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Index;
@@ -27,7 +26,6 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sns.model.PublishRequest;
-import com.amazonaws.services.sns.model.PublishResult;
 import com.google.gson.Gson;
 
 public class MyHandler {	
@@ -62,9 +60,7 @@ public class MyHandler {
 		Index index = table.getIndex(Malware.INDEX_NAME);
 
         ItemCollection<QueryOutcome> items = null;
-        
-        //logger.log("Malware Hash: " + md5Hash);
-        
+                      
         QuerySpec querySpec = new QuerySpec();        
         querySpec.withKeyConditionExpression(Malware.MD5_HASH_ATTR + " = :v_md5Hash")
         .withValueMap(new ValueMap()
@@ -77,7 +73,7 @@ public class MyHandler {
         	Item item = iterator.next();
         	String msg = "=========>>>>>>> " + deviceID + " infected with malware: " + item.get(Malware.NAME_ATTR);
         	
-        	logger.log(msg);        	
+        	//logger.log(msg);        	
         	        	
         	PublishRequest publishRequest = new PublishRequest(topicARN, msg);
         	snsClient.publish(publishRequest);
