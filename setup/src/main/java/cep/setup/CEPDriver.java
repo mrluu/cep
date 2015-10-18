@@ -47,6 +47,7 @@ public class CEPDriver {
 			else if (args[0].equalsIgnoreCase("init")) {
 				createTable(Event.TABLE_NAME, 10L, 10L, Event.KEY_ATTR, "S", null, null);
 				createTable(Malware.TABLE_NAME, 10L, 10L, Malware.KEY_ATTR, "S", null, null);
+				createTable("MalwareDevice", 10L, 10L, "MalwareID", "S", "DeviceID", "S");
 				SensorSimulator.populateMalwareCatalog(dynamoDBClient);
 				createSNSTopic();
 			}
@@ -57,6 +58,7 @@ public class CEPDriver {
 				deleteSNSTopic();
 				deleteTable(Event.TABLE_NAME);
 				deleteTable(Malware.TABLE_NAME);
+				deleteTable("MalwareDevice");
 			}
 			else {
 				System.out.println("Please supply a valid argument");
@@ -96,20 +98,8 @@ public class CEPDriver {
             CreateTableRequest request = null;
             Table table;
             
-            if (tableName.equals(Event.TABLE_NAME)) {
-	            StreamSpecification streamSpecification = new StreamSpecification();
-	            streamSpecification.setStreamEnabled(true);
-	            streamSpecification.setStreamViewType(StreamViewType.NEW_IMAGE);
-	
-	            request = new CreateTableRequest()
-                    .withTableName(tableName)
-                    .withKeySchema(keySchema)
-                    .withProvisionedThroughput( new ProvisionedThroughput()
-                    .withReadCapacityUnits(readCapacityUnits)
-                    .withWriteCapacityUnits(writeCapacityUnits))
-                    .withStreamSpecification(streamSpecification);
-            }
-            else if (tableName.equals(Malware.TABLE_NAME)) {
+            
+            if (tableName.equals(Malware.TABLE_NAME)) {
             	attributeDefinitions.add(new AttributeDefinition()
             		.withAttributeName(Malware.MD5_HASH_ATTR)
             		.withAttributeType("S"));
@@ -133,6 +123,27 @@ public class CEPDriver {
                 	.withWriteCapacityUnits(writeCapacityUnits))
                 	.withGlobalSecondaryIndexes(md5HashIndex);
             }
+            else if (tableName.equals(Event.TABLE_NAME)) {
+	            StreamSpecification streamSpecification = new StreamSpecification();
+	            streamSpecification.setStreamEnabled(true);
+	            streamSpecification.setStreamViewType(StreamViewType.NEW_IMAGE);
+	
+	            request = new CreateTableRequest()
+                    .withTableName(tableName)
+                    .withKeySchema(keySchema)
+                    .withProvisionedThroughput( new ProvisionedThroughput()
+                    .withReadCapacityUnits(readCapacityUnits)
+                    .withWriteCapacityUnits(writeCapacityUnits))
+                    .withStreamSpecification(streamSpecification);
+            }
+            else {
+            	request = new CreateTableRequest()
+                    .withTableName(tableName)
+                    .withKeySchema(keySchema)
+                    .withProvisionedThroughput( new ProvisionedThroughput()
+                    .withReadCapacityUnits(readCapacityUnits)
+                    .withWriteCapacityUnits(writeCapacityUnits));
+            }
             
             request.setAttributeDefinitions(attributeDefinitions); 
             table = dynamoDB.createTable(request);           
@@ -141,6 +152,7 @@ public class CEPDriver {
         } catch (Exception e) {
             System.err.println("CreateTable request failed for " + tableName);
             System.err.println(e.getMessage());
+            e.printStackTrace();
         }
     }	
     

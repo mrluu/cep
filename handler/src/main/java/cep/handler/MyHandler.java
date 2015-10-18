@@ -44,13 +44,12 @@ public class MyHandler {
                 
         List<Record> records = deserialize(new String(baos.toByteArray())).records;
         for (Record record : records) {
-        	Event event = record.dbRecord.event;
-        	SoftwareMD5Hash md5Hash = event.softwareMD5Hash;	        	
-	        testForMalware(md5Hash.value, event.deviceID.value, logger);        	
+        	Event event = record.dbRecord.event;	        	
+	        testForMalware(event, logger);        	
         }      
     }
 	
-	private void testForMalware(String md5Hash, String deviceID, LambdaLogger logger) {
+	private void testForMalware(Event event, LambdaLogger logger) {
 		Table table = dynamoDB.getTable(Malware.TABLE_NAME);
 		
 		//Get the topic ARN that we put into the table when the SNS topic was set up
@@ -64,21 +63,29 @@ public class MyHandler {
         QuerySpec querySpec = new QuerySpec();        
         querySpec.withKeyConditionExpression(Malware.MD5_HASH_ATTR + " = :v_md5Hash")
         .withValueMap(new ValueMap()
-            .withString(":v_md5Hash", md5Hash));
+            .withString(":v_md5Hash", event.softwareMD5Hash.value));
         
         items = index.query(querySpec);
         
         Iterator<Item> iterator = items.iterator();
         while (iterator.hasNext()) {
         	Item item = iterator.next();
-        	String msg = "=========>>>>>>> " + deviceID + " infected with malware: " + item.get(Malware.NAME_ATTR);
+        	String msg = "=========>>>>>>> " + event.deviceID.value + " infected with malware: " + item.get(Malware.NAME_ATTR);
         	
-        	//logger.log(msg);        	
+        	writeToDB(item.get(Malware.KEY_ATTR).toString(), event.deviceID.value, event.timestamp.value);        	
         	        	
         	PublishRequest publishRequest = new PublishRequest(topicARN, msg);
         	snsClient.publish(publishRequest);
         }	
 	}	
+	
+	private void writeToDB(String malwareID, String deviceID, String date) {
+		Table table = dynamoDB.getTable("MalwareDevice");
+		Item item = new Item()
+				.withPrimaryKey("MalwareID", malwareID, "DeviceID", deviceID)
+				.withString("DateInfected", date);
+		table.putItem(item);
+	}
 	
 	public static DDBStreamRecords deserialize(String input) {
 		Gson g = new Gson();
